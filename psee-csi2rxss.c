@@ -23,6 +23,9 @@
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
 
+/* define media-bus types in case it's not present in the kernel */
+#include "psee-format.h"
+
 /*
  * Pad IDs. IP cores with multiple inputs or outputs should define
  * their own values.
@@ -139,6 +142,7 @@
 #define XCSI_DT_RAW14		0x2d
 #define XCSI_DT_RAW16		0x2e
 #define XCSI_DT_RAW20		0x2f
+#define XCSI_DT_USER1		0x30
 
 #define XCSI_VCX_START		4
 #define XCSI_MAX_VC		4
@@ -219,6 +223,10 @@ static const u32 xcsi2dt_mbus_lut[][2] = {
 	{ XCSI_DT_RAW16, MEDIA_BUS_FMT_SGBRG16_1X16 },
 	{ XCSI_DT_RAW16, MEDIA_BUS_FMT_SGRBG16_1X16 },
 	{ XCSI_DT_RAW20, 0 },
+	{ XCSI_DT_USER1, MEDIA_BUS_FMT_PSEE_EVT2 },
+	{ XCSI_DT_USER1, MEDIA_BUS_FMT_PSEE_EVT21ME },
+	{ XCSI_DT_USER1, MEDIA_BUS_FMT_PSEE_EVT21 },
+	{ XCSI_DT_USER1, MEDIA_BUS_FMT_PSEE_EVT3 },
 };
 
 /**
@@ -835,7 +843,7 @@ static int xcsi2rxss_set_format(struct v4l2_subdev *sd,
 	 * other RAW, YUV422 8/10 or RGB888, set appropriate media bus format.
 	 */
 	dt = xcsi2rxss_get_dt(fmt->format.code);
-	if (dt != xcsi2rxss->datatype && dt != XCSI_DT_RAW8) {
+	if (dt != xcsi2rxss->datatype && dt != XCSI_DT_RAW8 && dt != XCSI_DT_USER1) {
 		dev_dbg(xcsi2rxss->dev, "Unsupported media bus format");
 		/* set the default format for the data type */
 		fmt->format.code = xcsi2rxss_get_nth_mbus(xcsi2rxss->datatype,
@@ -954,6 +962,7 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 	case XCSI_DT_RAW10:
 	case XCSI_DT_RAW12:
 	case XCSI_DT_RAW14:
+	case XCSI_DT_USER1:
 		break;
 	case XCSI_DT_YUV42210B:
 	case XCSI_DT_RAW16:
