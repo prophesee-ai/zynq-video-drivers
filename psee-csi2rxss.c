@@ -931,7 +931,7 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 	struct v4l2_fwnode_endpoint vep = {
 		.bus_type = V4L2_MBUS_CSI2_DPHY
 	};
-	bool en_csi_v20, vfb;
+	bool en_csi_v20;
 	int ret;
 
 	en_csi_v20 = of_property_read_bool(node, "xlnx,en-csi-v2-0");
@@ -980,9 +980,8 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 		return ret;
 	}
 
-	vfb = of_property_read_bool(node, "xlnx,vfb");
-	if (!vfb) {
-		dev_err(dev, "operation without VFB is not supported\n");
+	if (of_property_read_bool(node, "xlnx,vfb")) {
+		dev_warn(dev, "This driver is meant to be used without VFB\n");
 		return -EINVAL;
 	}
 
