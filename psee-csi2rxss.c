@@ -1102,6 +1102,7 @@ static int xcsi2rxss_probe(struct platform_device *pdev)
 	/* Initialize V4L2 subdevice and media entity */
 	subdev = &xcsi2rxss->subdev;
 	v4l2_subdev_init(subdev, &xcsi2rxss_ops);
+	subdev->entity.function = MEDIA_ENT_F_VID_IF_BRIDGE;
 	subdev->dev = dev;
 	strscpy(subdev->name, dev_name(dev), sizeof(subdev->name));
 	subdev->flags |= V4L2_SUBDEV_FL_HAS_EVENTS | V4L2_SUBDEV_FL_HAS_DEVNODE;
