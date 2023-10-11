@@ -892,6 +892,44 @@ static int xcsi2rxss_enum_mbus_code(struct v4l2_subdev *sd,
 	return ret;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg) {
+	struct xcsi2rxss_state *state = to_xcsi2rxssstate(sd);
+
+        if (reg->size && reg->size != 4)
+                return -EINVAL;
+
+	/* check if the address is aligned */
+	if (reg->reg & 3ul)
+                return -EINVAL;
+
+	/* check if the provided address is either in CSI-Rx or D-PHY memory space */
+	if (reg->reg >= 0x2000)
+		return -EINVAL;
+
+	reg->val = xcsi2rxss_read(state, reg->reg);
+	return 0;
+}
+
+static int s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg) {
+	struct xcsi2rxss_state *state = to_xcsi2rxssstate(sd);
+
+        if (reg->size && reg->size != 4)
+                return -EINVAL;
+
+	/* check if the address is aligned */
+	if (reg->reg & 3ul)
+                return -EINVAL;
+
+	/* check if the provided address is either in CSI-Rx or D-PHY memory space */
+	if (reg->reg >= 0x2000)
+		return -EINVAL;
+
+	xcsi2rxss_write(state, reg->reg, reg->val);
+	return 0;
+}
+#endif
+
 /* -----------------------------------------------------------------------------
  * Media Operations
  */
@@ -902,6 +940,10 @@ static const struct media_entity_operations xcsi2rxss_media_ops = {
 
 static const struct v4l2_subdev_core_ops xcsi2rxss_core_ops = {
 	.log_status = xcsi2rxss_log_status,
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.g_register = g_register,
+	.s_register = s_register,
+#endif
 };
 
 static const struct v4l2_subdev_video_ops xcsi2rxss_video_ops = {
