@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2016 - 2020 Xilinx, Inc.
  *
- * Contacts: Vishal Sagar <vishal.sagar@xilinx.com>
+ * Modified by Prophesee to run without Video Format Bridge
  *
  */
 #include <linux/clk.h>
@@ -22,7 +22,13 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-subdev.h>
-#include "xilinx-vip.h"
+
+/*
+ * Pad IDs. IP cores with multiple inputs or outputs should define
+ * their own values.
+ */
+#define XVIP_PAD_SINK			0
+#define XVIP_PAD_SOURCE			1
 
 /* Register register map */
 #define XCSI_CCR_OFFSET		0x00
@@ -1140,7 +1146,7 @@ MODULE_DEVICE_TABLE(of, xcsi2rxss_of_id_table);
 
 static struct platform_driver xcsi2rxss_driver = {
 	.driver = {
-		.name		= "xilinx-csi2rxss",
+		.name		= "psee-csi2rxss",
 		.of_match_table	= xcsi2rxss_of_id_table,
 	},
 	.probe			= xcsi2rxss_probe,
