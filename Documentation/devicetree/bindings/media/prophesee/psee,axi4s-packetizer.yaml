@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/prophesee/psee,axi4s-packetizer.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Prophesee AXI4-Stream packetizer
+
+maintainers:
+  - Christian Dreher <cdreher@prophesee.ai>
+
+description: |
+  The AXI4-Stream packetizer is a block that put input AXI4S transfers into
+  packets, generating appropriate TLAST signal, based on transfers size, to
+  avoid to overrun the DMA buffers, or on time, allowing packet latency to be
+  bound.
+
+properties:
+  compatible:
+    enum:
+      - psee,axi4s-packetizer
+
+  reg:
+    maxItems: 1
+
+  dmas:
+    description: |
+      List of the DMA channels connected to the Packetizer.
+    maxItems: 1
+
+  dma-names:
+    description: |
+      Name of the DMA channels, used to map them with the inputs of the
+      packetizer. A DMA channel shall be name "port" followed by the index of
+      the port that will feed it.
+    items:
+      - const: port0
+
+  ports:
+    $ref: /schemas/graph.yaml#/properties/ports
+
+    properties:
+      port@0:
+        $ref: /schemas/graph.yaml#/$defs/port-base
+        description: |
+          Input/sink port node, describing the connection to the
+          output of the uphill block in the hardware pipeline.
+
+required:
+  - compatible
+  - reg
+  - dmas
+  - dma-names
+  - ports
+
+additionalProperties: false
+
+examples:
+  - |
+    event_cap {
+        compatible ="psee,axi4s-packetizer";
+        dmas = <&axi_dma 1>;
+        dma-names = "port0";
+        ports {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@0 {
+                /* Sink port */
+                reg = <0>;
+                direction = "input";
+                psee_packetizer_in: endpoint {
+                    remote-endpoint = <&mipi_csirx_out>;
+                };
+            };
+        };
+    };
+...
