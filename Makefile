@@ -1,4 +1,5 @@
 obj-m := psee-video.o
+psee-video-objs += psee-dma.o psee-composite.o
 
 SRC := $(shell pwd)
 
