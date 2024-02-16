@@ -56,9 +56,12 @@ static inline struct psee_pipeline *to_psee_pipeline(struct media_entity *e)
  * @lock: protects the @queue field
  * @queue: vb2 buffers queue
  * @sequence: V4L2 buffers sequence number
+ * @transfer_size: Size of the DMA buffers, =maximum transfer size
  * @queued_bufs: list of queued buffers
  * @queued_lock: protects the buf_queued list
  * @dma: DMA engine channel
+ * @iomem: Mapping of the IP registers in the kernel space
+ * @iosize: size of the mapped register bank (in byte)
  */
 struct psee_dma {
 	struct list_head list;
@@ -79,6 +82,7 @@ struct psee_dma {
 	spinlock_t queued_lock;
 
 	void __iomem *iomem;
+	resource_size_t iosize;
 	struct dma_chan *dma;
 };
 

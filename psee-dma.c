@@ -618,6 +618,57 @@ psee_dma_set_format(struct file *file, void *fh, struct v4l2_format *format)
 	return __psee_dma_get_format(dma, &format->fmt.pix);
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int psee_dma_g_register(struct file *file, void *fh, struct v4l2_dbg_register *reg)
+{
+	struct psee_dma *dev = video_drvdata(file);
+
+	if (reg->match.addr > 0)
+		return -EINVAL;
+
+	/* check if the address is aligned */
+	if (reg->reg & 3ul)
+		return -EINVAL;
+
+	/* check if the provided address is in the mapped space */
+	if (reg->reg >= dev->iosize)
+		return -EINVAL;
+
+	reg->val = read_reg(dev, reg->reg);
+	reg->size = 4;
+	return 0;
+}
+
+static int psee_dma_s_register(struct file *file, void *fh, const struct v4l2_dbg_register *reg)
+{
+	struct psee_dma *dev = video_drvdata(file);
+
+	if (reg->match.addr > 0)
+		return -EINVAL;
+
+	/* check if the address is aligned */
+	if (reg->reg & 3ul)
+		return -EINVAL;
+
+	/* check if the provided address is in the mapped space */
+	if (reg->reg >= dev->iosize)
+		return -EINVAL;
+
+	write_reg(dev, reg->reg, reg->val);
+	return 0;
+}
+
+static int psee_dma_g_chip_info(struct file *file, void *fh, struct v4l2_dbg_chip_info *chip)
+{
+	struct psee_dma *dev = video_drvdata(file);
+
+	if (chip->match.addr > 0)
+		return -EINVAL;
+	strscpy(chip->name, dev->video.v4l2_dev->name, sizeof(chip->name));
+	return 0;
+}
+#endif
+
 static const struct v4l2_ioctl_ops psee_dma_ioctl_ops = {
 	.vidioc_querycap		= psee_dma_querycap,
 	.vidioc_enum_fmt_vid_cap	= psee_dma_enum_format,
@@ -632,6 +683,11 @@ static const struct v4l2_ioctl_ops psee_dma_ioctl_ops = {
 	.vidioc_expbuf			= vb2_ioctl_expbuf,
 	.vidioc_streamon		= vb2_ioctl_streamon,
 	.vidioc_streamoff		= vb2_ioctl_streamoff,
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.vidioc_g_register		= psee_dma_g_register,
+	.vidioc_s_register		= psee_dma_s_register,
+	.vidioc_g_chip_info		= psee_dma_g_chip_info,
+#endif
 };
 
 /* -----------------------------------------------------------------------------
@@ -738,6 +794,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 		ret = PTR_ERR(dma->iomem);
 		goto error;
 	}
+	dma->iosize = resource_size(io_space);
 
 	/* Make sure counter pattern is disabled */
 	write_reg(dma, REG_PACKETIZER_CONTROL, 0);
