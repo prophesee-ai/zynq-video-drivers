@@ -712,6 +712,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 {
 	char name[16];
 	int ret;
+	struct device *dev = psee_dev->dev;
 
 	dma->psee_dev = psee_dev;
 	dma->port = port;
@@ -736,7 +737,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 	dma->video.v4l2_dev = &psee_dev->v4l2_dev;
 	dma->video.queue = &dma->queue;
 	snprintf(dma->video.name, sizeof(dma->video.name), "%pOFn %s %u",
-		 psee_dev->dev->of_node,
+		 dev->of_node,
 		 type == V4L2_BUF_TYPE_VIDEO_CAPTURE ? "output" : "input",
 		 port);
 	dma->video.vfl_type = VFL_TYPE_VIDEO;
@@ -770,7 +771,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 	dma->queue.mem_ops = &vb2_dma_contig_memops;
 	dma->queue.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
 				   | V4L2_BUF_FLAG_TSTAMP_SRC_EOF;
-	dma->queue.dev = dma->psee_dev->dev;
+	dma->queue.dev = dev;
 	ret = vb2_queue_init(&dma->queue);
 	if (ret < 0) {
 		dev_err(dma->psee_dev->dev, "failed to initialize VB2 queue\n");
@@ -779,18 +780,18 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 
 	/* ... and the DMA channel. */
 	snprintf(name, sizeof(name), "port%u", port);
-	dma->dma = dma_request_chan(dma->psee_dev->dev, name);
+	dma->dma = dma_request_chan(dev, name);
 	if (IS_ERR(dma->dma)) {
 		ret = PTR_ERR(dma->dma);
 		if (ret != -EPROBE_DEFER)
-			dev_err(dma->psee_dev->dev, "no VDMA channel found\n");
+			dev_err(dev, "no VDMA channel found\n");
 		goto error;
 	}
 
 	/* Map the DMA packetizer registers */
-	dma->iomem = devm_ioremap_resource(psee_dev->dev, io_space);
+	dma->iomem = devm_ioremap_resource(dev, io_space);
 	if (IS_ERR(dma->iomem)) {
-		dev_err(dma->psee_dev->dev, "Missing DMA packetizer iomem\n");
+		dev_err(dev, "Missing DMA packetizer iomem\n");
 		ret = PTR_ERR(dma->iomem);
 		goto error;
 	}
@@ -803,7 +804,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 
 	ret = video_register_device(&dma->video, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
-		dev_err(dma->psee_dev->dev, "failed to register video device\n");
+		dev_err(dev, "failed to register video device\n");
 		goto error;
 	}
 
