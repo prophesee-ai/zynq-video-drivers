@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/prophesee/psee,passthrough.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Prophesee Passthrough-capable streaming blocks
+
+maintainers:
+  - Christian Dreher <cdreher@prophesee.ai>
+
+description: |
+  Many blocks have the same overall interface, with an input AXI Stream, an
+  output AXI Stream, and a AXI Lite to setup the block with register accesses.
+  Such a block, with a compliant register map, may be set in bypass mode,
+  outputing the input data with no alteration, making it useless, but at least
+  allowing the pipeline to stream.
+
+properties:
+  compatible:
+    enum:
+      - psee,passthrough
+
+  reg:
+    maxItems: 1
+
+  ports:
+    $ref: /schemas/graph.yaml#/properties/ports
+
+    properties:
+      port@0:
+        $ref: /schemas/graph.yaml#/$defs/port-base
+        description: |
+          Input/sink port node, describing the connection to the
+          output of the uphill block in the hardware pipeline.
+
+      port@1:
+        $ref: /schemas/graph.yaml#/$defs/port-base
+        description: |
+          Output/source port node, describing the connection to the
+          input of the downhill block in the hardware pipeline.
+
+required:
+  - compatible
+  - reg
+  - ports
+
+additionalProperties: false
+
+examples:
+  - |
+    tkeep_handler@a0000000 {
+        compatible = "psee,passthrough";
+        reg = <0xa0000000 0x80>;
+        ports {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@0 {
+                /* Sink port */
+                reg = <0>;
+                tkeep_handler_in: endpoint {
+                    remote-endpoint = <&mipi_csirx_out>;
+                };
+            };
+            port@1 {
+                /* Source port */
+                reg = <1>;
+                tkeep_handler_out: endpoint {
+                    remote-endpoint = <&packetizer_in>;
+                };
+            };
+        };
+    };
+...
