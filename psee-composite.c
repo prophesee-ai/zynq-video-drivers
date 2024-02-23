@@ -630,22 +630,16 @@ static int psee_graph_dma_init_one(struct psee_composite_device *pdev,
 {
 	struct psee_dma *dma;
 	enum v4l2_buf_type type;
-	const char *direction;
 	unsigned int index;
 	int ret;
 
-	ret = of_property_read_string(node, "direction", &direction);
-	if (ret < 0)
-		return ret;
-
-	if (strcmp(direction, "input") == 0)
-		type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	else if (strcmp(direction, "output") == 0)
-		type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-	else
-		return -EINVAL;
-
 	of_property_read_u32(node, "reg", &index);
+
+	/* Originally there was a direction information on each port, to manage the DMA accordingly,
+	 * but now the binding states that there is exactly one port, acting as input.
+	 * Another may be added to inject data in the pipeline
+	 */
+	type = index == 0 ? V4L2_BUF_TYPE_VIDEO_CAPTURE : V4L2_BUF_TYPE_VIDEO_OUTPUT;
 
 	dma = devm_kzalloc(pdev->dev, sizeof(*dma), GFP_KERNEL);
 	if (dma == NULL)
