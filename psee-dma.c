@@ -35,7 +35,16 @@
 
 #define REG_PACKETIZER_VERSION		(0x0)
 #define REG_PACKETIZER_CONTROL		(0x4)
+#define ENABLE_COUNTER_PATTERN		BIT(0)
+#define ENABLE_TLAST_TIMEOUT		BIT(1)
+#define CLEAR				BIT(2)
 #define REG_PACKETIZER_PACKET_LENGTH	(0x8)
+#define REG_PACKETIZER_TLAST_TIMEOUT	(0xC)
+#define REG_PACKETIZER_TLAST_TIMEOUT_EVT_MSB	(0x10)
+#define REG_PACKETIZER_TLAST_TIMEOUT_EVT_LSB	(0x14)
+
+/* V4L2 Control codes */
+#define V4L2_CID_XFER_TIMEOUT_ENABLE	(V4L2_CID_USER_BASE | 0x1001)
 
 /*
  * Register related operations
@@ -449,6 +458,9 @@ static int psee_dma_start_streaming(struct vb2_queue *vq, unsigned int count)
 	 */
 	dma_async_issue_pending(dma->dma);
 
+	/* Set the packetizer requested behavior */
+	v4l2_ctrl_handler_setup(dma->video.ctrl_handler);
+
 	/* Start the pipeline. */
 	psee_pipeline_set_stream(pipe, true);
 
@@ -477,6 +489,9 @@ static void psee_dma_stop_streaming(struct vb2_queue *vq)
 
 	/* Stop the pipeline. */
 	psee_pipeline_set_stream(pipe, false);
+
+	/* Disable packetizer and clear its memories */
+	write_reg(dma, REG_PACKETIZER_CONTROL, CLEAR);
 
 	/* Stop and reset the DMA engine. */
 	dmaengine_terminate_all(dma->dma);
@@ -704,6 +719,41 @@ static const struct v4l2_file_operations psee_dma_fops = {
 };
 
 /* -----------------------------------------------------------------------------
+ * DMA Packetizer controls
+ */
+static int timeout_s_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct psee_dma *dma = ctrl->priv;
+	u32 val;
+
+	switch (ctrl->id) {
+	case V4L2_CID_XFER_TIMEOUT_ENABLE:
+		val = read_reg(dma, REG_PACKETIZER_CONTROL);
+		val &= ~ENABLE_TLAST_TIMEOUT;
+		val |= (ctrl->val ? ENABLE_TLAST_TIMEOUT : 0);
+		write_reg(dma, REG_PACKETIZER_CONTROL, val);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+static const struct v4l2_ctrl_ops timeout_ctrl_ops = {
+	.s_ctrl = timeout_s_ctrl,
+};
+
+static const struct v4l2_ctrl_config timeout_enable_control = {
+	.ops = &timeout_ctrl_ops,
+	.id = V4L2_CID_XFER_TIMEOUT_ENABLE,
+	.name = "Transfer timeout enable",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.def = true,
+	.step = 1,
+};
+
+/* -----------------------------------------------------------------------------
  * Video DMA Core
  */
 
@@ -713,6 +763,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 	char name[16];
 	int ret;
 	struct device *dev = psee_dev->dev;
+	struct v4l2_ctrl_handler *ctrl_hdr;
 
 	dma->psee_dev = psee_dev;
 	dma->port = port;
@@ -802,6 +853,33 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 	/* Set packet size to image size in bus words */
 	write_reg(dma, REG_PACKETIZER_PACKET_LENGTH, dma->transfer_size / 8);
 
+	/* Initialize the V4L2-ctl handler to tune the behavior */
+	dma->video.ctrl_handler =
+		devm_kzalloc(dev, sizeof(*dma->video.ctrl_handler), GFP_KERNEL);
+	ctrl_hdr = dma->video.ctrl_handler;
+	if (!ctrl_hdr) {
+		dev_err(dev, "Could not allocate V4L2 control handler\n");
+		ret = -ENOMEM;
+		goto error;
+	}
+	v4l2_ctrl_handler_init(ctrl_hdr, 3);
+
+	/* Set the features of the V2 IP */
+	if (read_reg(dma, REG_PACKETIZER_VERSION) == 0x20000) {
+		/* Set a timeout symbol that works in both EVT21 and EVT3 */
+		write_reg(dma, REG_PACKETIZER_TLAST_TIMEOUT_EVT_LSB, 0xE019E019);
+		write_reg(dma, REG_PACKETIZER_TLAST_TIMEOUT_EVT_MSB, 0xE019E019);
+
+		/* Register a control to enable/disable timeout on transfers */
+		v4l2_ctrl_new_custom(ctrl_hdr, &timeout_enable_control, dma);
+	}
+
+	ret = ctrl_hdr->error;
+	if (ret < 0) {
+		dev_err(dev, "failed to set control handler\n");
+		goto error;
+	}
+
 	ret = video_register_device(&dma->video, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
 		dev_err(dev, "failed to register video device\n");
@@ -819,6 +897,9 @@ void psee_dma_cleanup(struct psee_dma *dma)
 {
 	if (video_is_registered(&dma->video))
 		video_unregister_device(&dma->video);
+
+	if (dma->video.ctrl_handler)
+		v4l2_ctrl_handler_free(dma->video.ctrl_handler);
 
 	if (!IS_ERR_OR_NULL(dma->dma))
 		dma_release_channel(dma->dma);
