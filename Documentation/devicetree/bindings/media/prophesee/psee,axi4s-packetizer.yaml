@@ -57,8 +57,9 @@ additionalProperties: false
 
 examples:
   - |
-    event_cap {
+    event_cap@a0000000 {
         compatible ="psee,axi4s-packetizer";
+        reg = <0xa0000000 0x100>;
         dmas = <&axi_dma 1>;
         dma-names = "port0";
         ports {
@@ -68,7 +69,6 @@ examples:
             port@0 {
                 /* Sink port */
                 reg = <0>;
-                direction = "input";
                 psee_packetizer_in: endpoint {
                     remote-endpoint = <&mipi_csirx_out>;
                 };
