@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/prophesee/psee,axis-tkeep-handler.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Prophesee AXI4-Stream transfer merger
+
+maintainers:
+  - Christian Dreher <cdreher@prophesee.ai>
+
+description: |
+  The input of Prophesee FPGA Video pipeline is the Xilinx MIPI CSI-2 Rx IP.
+  This IP output data on the full bus width (Prophesee does not use the Xilinx
+  Video Format Bridge part of the IP), except on MIPI CSI-2 end of line, if the
+  line length is not a multiple of the bus length, which happens for instance
+  when the event size is smaller than the AXI4S bus width, and line transfer is
+  triggered by timeout (to bound the latency of the system).
+  This IP reaggregates AXI4S transfers (A single transfer is defined by a single
+  TVALID, TREADY handshake; see ARM specification) based on the TKEEP signal to
+  output only transfers using the full bus width, avoiding to the downstream IPs
+  the burden of transfer merging.
+  The IP also has the ability to switch the upper and the lower part of the data
+  to convert the middle-endian Prophesee Evt2.1 format output by an IMX636
+  sensor into little-endian Evt2.1 (allowing to plug an IMX636 on a pipeline
+  working on Evt2.1 data.
+
+properties:
+  compatible:
+    enum:
+      - psee,axis-tkeep-handler
+
+  reg:
+    maxItems: 1
+
+  ports:
+    $ref: /schemas/graph.yaml#/properties/ports
+
+    properties:
+      port@0:
+        $ref: /schemas/graph.yaml#/$defs/port-base
+        description: |
+          Input/sink port node, describing the connection to the
+          output of the uphill block in the hardware pipeline.
+
+      port@1:
+        $ref: /schemas/graph.yaml#/$defs/port-base
+        description: |
+          Output/source port node, describing the connection to the
+          input of the downhill block in the hardware pipeline.
+
+required:
+  - compatible
+  - reg
+  - ports
+
+additionalProperties: false
+
+examples:
+  - |
+    tkeep_handler@a0000000 {
+        compatible = "psee,axis-tkeep-handler";
+        reg = <0xa0000000 0x80>;
+        ports {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@0 {
+                /* Sink port */
+                reg = <0>;
+                tkeep_handler_in: endpoint {
+                    remote-endpoint = <&mipi_csirx_out>;
+                };
+            };
+            port@1 {
+                /* Source port */
+                reg = <1>;
+                tkeep_handler_out: endpoint {
+                    remote-endpoint = <&packetizer_in>;
+                };
+            };
+        };
+    };
+...
