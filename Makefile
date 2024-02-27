@@ -1,4 +1,4 @@
-obj-m := psee-video.o psee-csi2rxss.o psee-streamer.o
+obj-m := psee-video.o psee-csi2rxss.o psee-streamer.o psee-tkeep-handler.o
 psee-video-objs += psee-dma.o psee-composite.o
 
 SRC := $(shell pwd)
