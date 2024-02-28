@@ -208,9 +208,6 @@ static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
 {
 	struct psee_streamer *streamer = to_streamer(sd);
 
-	if (reg->size && reg->size != 4)
-		return -EINVAL;
-
 	/* check if the address is aligned */
 	if (reg->reg & 3ul)
 		return -EINVAL;
@@ -219,6 +216,7 @@ static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
 	if (reg->reg >= streamer->iosize)
 		return -EINVAL;
 
+	reg->size = 4;
 	reg->val = read_reg(streamer, reg->reg);
 	return 0;
 }
@@ -226,9 +224,6 @@ static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
 static int s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg)
 {
 	struct psee_streamer *streamer = to_streamer(sd);
-
-	if (reg->size && reg->size != 4)
-		return -EINVAL;
 
 	/* check if the address is aligned */
 	if (reg->reg & 3ul)
