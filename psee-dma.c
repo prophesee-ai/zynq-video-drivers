@@ -347,7 +347,8 @@ static void psee_dma_complete(void *param, const struct dmaengine_result *result
 	buf->buf.sequence = dma->sequence++;
 	buf->buf.vb2_buf.timestamp = ktime_get_ns();
 	vb2_set_plane_payload(&buf->buf.vb2_buf, 0, dma->transfer_size - result->residue);
-	vb2_buffer_done(&buf->buf.vb2_buf, VB2_BUF_STATE_DONE);
+	vb2_buffer_done(&buf->buf.vb2_buf,
+		result->result == DMA_TRANS_NOERROR ? VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR);
 }
 
 static int
