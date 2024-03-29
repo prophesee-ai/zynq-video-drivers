@@ -866,7 +866,7 @@ int psee_dma_init(struct psee_composite_device *psee_dev, struct psee_dma *dma,
 	v4l2_ctrl_handler_init(ctrl_hdr, 3);
 
 	/* Set the features of the V2 IP */
-	if (read_reg(dma, REG_PACKETIZER_VERSION) == 0x20000) {
+	if ((read_reg(dma, REG_PACKETIZER_VERSION) & ~0xFFFF) == 0x20000) {
 		/* Set a timeout symbol that works in both EVT21 and EVT3 */
 		write_reg(dma, REG_PACKETIZER_TLAST_TIMEOUT_EVT_LSB, 0xE019E019);
 		write_reg(dma, REG_PACKETIZER_TLAST_TIMEOUT_EVT_MSB, 0xE019E019);
