@@ -173,3 +173,128 @@ It is defined as
 .. code-block:: C
 
    #define V4L2_CID_XFER_TIMEOUT_ENABLE    (V4L2_CID_USER_BASE | 0x1001)
+
+The effect can be shown when there is limited activity in front of the camera.
+By default, the timeout is enabled, the buffers will be transferred at a fixed
+rate (hence a known latency), with a variable amount of data.
+
+.. code-block:: none
+
+	root@xilinx-kv260-starterkit-20222:~# yavta --capture=10 /dev/video0
+	Device /dev/video0 opened.
+	Device `ps_host_if output 0' on `platform:ps_host_if:0' is a video output (without mplanes) device.
+	Video format: PSE2 (32455350) 1280x720 (stride 0) field none buffer size 1048576
+	8 buffers requested.
+	length: 1048576 offset: 0 timestamp type/source: mono/EoF
+	Buffer 0/0 mapped at address 0xffff98fee000.
+	length: 1048576 offset: 1048576 timestamp type/source: mono/EoF
+	Buffer 1/0 mapped at address 0xffff98eee000.
+	length: 1048576 offset: 2097152 timestamp type/source: mono/EoF
+	Buffer 2/0 mapped at address 0xffff98dee000.
+	length: 1048576 offset: 3145728 timestamp type/source: mono/EoF
+	Buffer 3/0 mapped at address 0xffff98cee000.
+	length: 1048576 offset: 4194304 timestamp type/source: mono/EoF
+	Buffer 4/0 mapped at address 0xffff98bee000.
+	length: 1048576 offset: 5242880 timestamp type/source: mono/EoF
+	Buffer 5/0 mapped at address 0xffff98aee000.
+	length: 1048576 offset: 6291456 timestamp type/source: mono/EoF
+	Buffer 6/0 mapped at address 0xffff989ee000.
+	length: 1048576 offset: 7340032 timestamp type/source: mono/EoF
+	Buffer 7/0 mapped at address 0xffff988ee000.
+	0 (0) [-] none 0 342960 B 781.817092 781.817105 57.727 fps ts mono/EoF
+	1 (1) [-] none 1 307224 B 781.834889 781.834898 56.189 fps ts mono/EoF
+	2 (2) [-] none 2 259016 B 781.852691 781.852701 56.173 fps ts mono/EoF
+	3 (3) [-] none 3 227920 B 781.870489 781.870499 56.186 fps ts mono/EoF
+	4 (4) [-] none 4 241544 B 781.888292 781.888303 56.170 fps ts mono/EoF
+	5 (5) [-] none 5 223152 B 781.906091 781.906101 56.183 fps ts mono/EoF
+	6 (6) [-] none 6 196880 B 781.923889 781.923899 56.186 fps ts mono/EoF
+	7 (7) [-] none 7 202640 B 781.941691 781.941700 56.173 fps ts mono/EoF
+	8 (0) [-] none 8 189096 B 781.959492 781.959501 56.177 fps ts mono/EoF
+	9 (1) [-] none 9 174608 B 781.977292 781.977302 56.180 fps ts mono/EoF
+	Captured 10 frames in 0.177533 seconds (56.327469 fps, 13321671.819795 B/s).
+	8 buffers released.
+
+Disabling this feature, the transfers will only happen once the buffers are
+full, after a time depending on the activity in front of the sensor:
+
+.. code-block:: none
+
+	root@xilinx-kv260-starterkit-20222:~# v4l2-ctl --set-ctrl transfer_timeout_enable=0
+	root@xilinx-kv260-starterkit-20222:~# yavta --capture=10 /dev/video0
+	Device /dev/video0 opened.
+	Device `ps_host_if output 0' on `platform:ps_host_if:0' is a video output (without mplanes) device.
+	Video format: PSE2 (32455350) 1280x720 (stride 0) field none buffer size 1048576
+	8 buffers requested.
+	length: 1048576 offset: 0 timestamp type/source: mono/EoF
+	Buffer 0/0 mapped at address 0xffffab633000.
+	length: 1048576 offset: 1048576 timestamp type/source: mono/EoF
+	Buffer 1/0 mapped at address 0xffffab533000.
+	length: 1048576 offset: 2097152 timestamp type/source: mono/EoF
+	Buffer 2/0 mapped at address 0xffffab433000.
+	length: 1048576 offset: 3145728 timestamp type/source: mono/EoF
+	Buffer 3/0 mapped at address 0xffffab333000.
+	length: 1048576 offset: 4194304 timestamp type/source: mono/EoF
+	Buffer 4/0 mapped at address 0xffffab233000.
+	length: 1048576 offset: 5242880 timestamp type/source: mono/EoF
+	Buffer 5/0 mapped at address 0xffffab133000.
+	length: 1048576 offset: 6291456 timestamp type/source: mono/EoF
+	Buffer 6/0 mapped at address 0xffffab033000.
+	length: 1048576 offset: 7340032 timestamp type/source: mono/EoF
+	Buffer 7/0 mapped at address 0xffffaaf33000.
+	0 (0) [-] none 0 1048576 B 1817.555355 1817.555371 22.932 fps ts mono/EoF
+	1 (1) [-] none 1 1048576 B 1817.629338 1817.629349 13.517 fps ts mono/EoF
+	2 (2) [-] none 2 1048576 B 1817.734335 1817.734348 9.524 fps ts mono/EoF
+	3 (3) [-] none 3 1048576 B 1817.854941 1817.854953 8.291 fps ts mono/EoF
+	4 (4) [-] none 4 1048576 B 1817.963346 1817.963357 9.225 fps ts mono/EoF
+	5 (5) [-] none 5 1048576 B 1818.067741 1818.067752 9.579 fps ts mono/EoF
+	6 (6) [-] none 6 1048576 B 1818.179532 1818.179544 8.945 fps ts mono/EoF
+	7 (7) [-] none 7 1048576 B 1818.295532 1818.295543 8.621 fps ts mono/EoF
+	8 (0) [-] none 8 1048576 B 1818.428342 1818.428353 7.530 fps ts mono/EoF
+	9 (1) [-] none 9 1048576 B 1818.596937 1818.596948 5.931 fps ts mono/EoF
+	Captured 10 frames in 1.085200 seconds (9.214890 fps, 9662512.468944 B/s).
+	May 16 11:38:48 xilinx-kv260-starterkit-20222 last message buffered 1 times
+	8 buffers released.
+
+With higher activity, the buffers are released as soon as filled, without
+exceeding the timeout value
+
+.. code-block:: none
+
+	root@xilinx-kv260-starterkit-20222:~# v4l2-ctl --set-ctrl transfer_timeout_enable=1
+	root@xilinx-kv260-starterkit-20222:~# yavta --capture=10 /dev/video0
+	Device /dev/video0 opened.
+	Device `ps_host_if output 0' on `platform:ps_host_if:0' is a video output (without mplanes) device.
+	Video format: PSE2 (32455350) 1280x720 (stride 0) field none buffer size 1048576
+	8 buffers requested.
+	length: 1048576 offset: 0 timestamp type/source: mono/EoF
+	Buffer 0/0 mapped at address 0xffff830d0000.
+	length: 1048576 offset: 1048576 timestamp type/source: mono/EoF
+	Buffer 1/0 mapped at address 0xffff82fd0000.
+	length: 1048576 offset: 2097152 timestamp type/source: mono/EoF
+	Buffer 2/0 mapped at address 0xffff82ed0000.
+	length: 1048576 offset: 3145728 timestamp type/source: mono/EoF
+	Buffer 3/0 mapped at address 0xffff82dd0000.
+	length: 1048576 offset: 4194304 timestamp type/source: mono/EoF
+	Buffer 4/0 mapped at address 0xffff82cd0000.
+	length: 1048576 offset: 5242880 timestamp type/source: mono/EoF
+	Buffer 5/0 mapped at address 0xffff82bd0000.
+	length: 1048576 offset: 6291456 timestamp type/source: mono/EoF
+	Buffer 6/0 mapped at address 0xffff82ad0000.
+	length: 1048576 offset: 7340032 timestamp type/source: mono/EoF
+	Buffer 7/0 mapped at address 0xffff829d0000.
+	0 (0) [-] none 0 130880 B 873.899345 874.503716 -1.655 fps ts mono/EoF
+	1 (1) [-] none 1 1048576 B 874.519127 874.519138 1.613 fps ts mono/EoF
+	2 (2) [-] none 2 1048576 B 874.527180 874.527190 124.177 fps ts mono/EoF
+	3 (3) [-] none 3 1048576 B 874.534345 874.534354 139.567 fps ts mono/EoF
+	4 (4) [-] none 4 1048576 B 874.541505 874.541514 139.665 fps ts mono/EoF
+	5 (5) [-] none 5 1048576 B 874.549914 874.549924 118.920 fps ts mono/EoF
+	6 (6) [-] none 6 1048576 B 874.557854 874.557864 125.945 fps ts mono/EoF
+	7 (7) [-] none 7 1048576 B 874.566743 874.566752 112.499 fps ts mono/EoF
+	8 (0) [-] none 8 1048576 B 874.582116 874.582125 65.049 fps ts mono/EoF
+	9 (1) [-] none 9 946464 B 874.599847 874.599857 56.398 fps ts mono/EoF
+	Captured 10 frames in 0.096148 seconds (104.005368 fps, 98450982.524675 B/s).
+	8 buffers released.
+
+This behavior only makes sense with asynchronous data. A frame-based system,
+even with compression and variable data rate, would dimension the buffer for
+the worst case, and ensure one transfer per frame.
