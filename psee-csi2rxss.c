@@ -531,6 +531,9 @@ static int xcsi2rxss_start_stream(struct xcsi2rxss_state *state)
 		return ret;
 	}
 
+	/* configure number of lanes */
+	xcsi2rxss_write(state, XCSI_PCR_OFFSET, state->max_num_lanes - 1);
+
 	/* enable interrupts */
 	xcsi2rxss_clr(state, XCSI_GIER_OFFSET, XCSI_GIER_GIE);
 	xcsi2rxss_write(state, XCSI_IER_OFFSET, XCSI_IER_INTR_MASK);
@@ -896,12 +899,12 @@ static int xcsi2rxss_enum_mbus_code(struct v4l2_subdev *sd,
 static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg) {
 	struct xcsi2rxss_state *state = to_xcsi2rxssstate(sd);
 
-        if (reg->size && reg->size != 4)
-                return -EINVAL;
+	if (reg->size && reg->size != 4)
+		return -EINVAL;
 
 	/* check if the address is aligned */
 	if (reg->reg & 3ul)
-                return -EINVAL;
+		return -EINVAL;
 
 	/* check if the provided address is either in CSI-Rx or D-PHY memory space */
 	if (reg->reg >= 0x2000)
@@ -914,12 +917,12 @@ static int g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg) {
 static int s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg) {
 	struct xcsi2rxss_state *state = to_xcsi2rxssstate(sd);
 
-        if (reg->size && reg->size != 4)
-                return -EINVAL;
+	if (reg->size && reg->size != 4)
+		return -EINVAL;
 
 	/* check if the address is aligned */
 	if (reg->reg & 3ul)
-                return -EINVAL;
+		return -EINVAL;
 
 	/* check if the provided address is either in CSI-Rx or D-PHY memory space */
 	if (reg->reg >= 0x2000)
@@ -969,7 +972,7 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 	struct device *dev = xcsi2rxss->dev;
 	struct device_node *node = dev->of_node;
 
-	struct fwnode_handle *ep;
+	struct fwnode_handle *ep, *remote;
 	struct v4l2_fwnode_endpoint vep = {
 		.bus_type = V4L2_MBUS_CSI2_DPHY
 	};
@@ -1036,14 +1039,38 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 	}
 
 	ret = v4l2_fwnode_endpoint_parse(ep, &vep);
-	fwnode_handle_put(ep);
 	if (ret) {
 		dev_err(dev, "error parsing sink port");
-		return ret;
+		goto err_ep_put;
 	}
 
 	dev_dbg(dev, "mipi number lanes = %d\n",
 		vep.bus.mipi_csi2.num_data_lanes);
+
+	xcsi2rxss->max_num_lanes = vep.bus.mipi_csi2.num_data_lanes;
+
+	remote = fwnode_graph_get_remote_endpoint(ep);
+	if (!remote) {
+		dev_err(dev, "no remote endpoint found");
+		goto err_ep_put;
+	}
+
+	ret = v4l2_fwnode_endpoint_parse(remote, &vep);
+	if (ret) {
+		dev_err(dev, "error parsing remote port");
+		goto err_remote_put;
+	}
+
+	fwnode_handle_put(remote);
+	fwnode_handle_put(ep);
+
+	dev_dbg(dev, "sensor number lanes = %d\n",
+		vep.bus.mipi_csi2.num_data_lanes);
+
+	if (vep.bus.mipi_csi2.num_data_lanes > xcsi2rxss->max_num_lanes) {
+		dev_err(dev, "invalid sensor configuration");
+		return -EINVAL;
+	}
 
 	xcsi2rxss->max_num_lanes = vep.bus.mipi_csi2.num_data_lanes;
 
@@ -1064,6 +1091,12 @@ static int xcsi2rxss_parse_of(struct xcsi2rxss_state *xcsi2rxss)
 		xcsi2rxss->datatype);
 
 	return 0;
+
+err_remote_put:
+	fwnode_handle_put(remote);
+err_ep_put:
+	fwnode_handle_put(ep);
+	return ret;
 }
 
 static int xcsi2rxss_probe(struct platform_device *pdev)
